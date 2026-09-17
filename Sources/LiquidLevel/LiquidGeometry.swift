@@ -43,6 +43,75 @@ public enum LiquidGeometry {
         )
     }
 
+    /// 容器と同じアスペクト比を保ったまま、`tilt` だけ回転させた容器に内接する最大の水平矩形のサイズ。
+    ///
+    /// 水平矩形 `a × (a·h/w)` の四隅が回転後の容器に収まる条件
+    /// `a(|cos| + r|sin|) ≤ w`, `a(|sin| + r|cos|) ≤ h` (r = h/w) から `a` の上限を求める。
+    public static func fittedSize(containerSize: CGSize, tilt: Double) -> CGSize {
+        let w = containerSize.width
+        let h = containerSize.height
+        guard w > 0, h > 0 else { return .zero }
+        let s = abs(sin(tilt))
+        let c = abs(cos(tilt))
+        let r = h / w
+        let a = min(w / (c + r * s), h / (s + r * c))
+        return CGSize(width: a, height: a * r)
+    }
+
+    /// `tilt` だけ回転させた容器に、面積比 `fraction` (0...1) の液体を入れたときの、
+    /// 最下点から液面までの高さ。
+    ///
+    /// 最下点からの高さ `y` 以下の面積 `A(y)` は、辺の傾きから次の区分関数になる
+    /// (s = |sin tilt|, c = |cos tilt|, m = min(w·s, h·c))。
+    /// - 下部三角: `A = y² / (2sc)` (0 ≤ y ≤ m)
+    /// - 中央平行四辺形: 幅が `m / (sc)` で一定 (m ≤ y ≤ H − m)
+    /// - 上部三角: 下部と対称 (H − m ≤ y ≤ H)
+    /// これを `A(y) = fraction · w · h` について解く。
+    public static func waterlineHeight(containerSize: CGSize, tilt: Double, fraction: Double) -> CGFloat {
+        let w = containerSize.width
+        let h = containerSize.height
+        guard w > 0, h > 0 else { return 0 }
+        let f = min(max(fraction, 0), 1)
+        let s = abs(sin(tilt))
+        let c = abs(cos(tilt))
+        let totalHeight = w * s + h * c
+        let m = min(w * s, h * c)
+        // 90° の倍数付近では容器が水平な矩形なので、水位は高さに比例する
+        guard m > 1e-9 else { return f * totalHeight }
+
+        let sc = s * c
+        let totalArea = w * h
+        let target = f * totalArea
+        let triangleArea = m * m / (2 * sc)
+
+        if target <= triangleArea {
+            return sqrt(2 * sc * target)
+        }
+        if target <= totalArea - triangleArea {
+            return m + (target - triangleArea) * sc / m
+        }
+        return totalHeight - sqrt(2 * sc * (totalArea - target))
+    }
+
+    /// `mode` に応じたコンテンツのサイズと配置を求める。
+    public static func layout(containerSize: CGSize, tilt: Double, mode: LiquidContentMode) -> LiquidLayout {
+        switch mode {
+        case .fill:
+            return LiquidLayout(size: levelBoundingBox(containerSize: containerSize, tilt: tilt))
+        case .fit:
+            return LiquidLayout(size: fittedSize(containerSize: containerSize, tilt: tilt))
+        case .waterline(let fraction):
+            let box = levelBoundingBox(containerSize: containerSize, tilt: tilt)
+            let height = waterlineHeight(containerSize: containerSize, tilt: tilt, fraction: fraction)
+            // 容器中心から最下点方向(画面座標での重力方向)へ、外接矩形の下半分と液体の高さの半分の差だけずらす
+            let distance = (box.height - height) / 2
+            return LiquidLayout(
+                size: CGSize(width: box.width, height: height),
+                offset: CGSize(width: distance * sin(tilt), height: distance * cos(tilt))
+            )
+        }
+    }
+
     /// デバイス座標系の重力ベクトルを、現在のインターフェース向きの画面座標系に変換する。
     public static func gravityInInterface(
         x: Double,
