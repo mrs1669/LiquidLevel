@@ -18,7 +18,8 @@ public extension Animation {
 ///
 /// 既定の `.fill` モードではコンテンツに「傾いた容器の水平外接矩形」のサイズが与えられる。
 /// そのため `alignment: .bottom` などで下寄せすると、端末を斜めにしたときに
-/// 菱形の最下点にコンテンツが沈む。コンテンツ全体を欠けずに見せたい場合は `.fit` を使う。
+/// 菱形の最下点にコンテンツが沈む。コンテンツ全体を欠けずに見せたい場合は `.fit`、
+/// 一定量の液体が水平な液面で溜まる表現には `.waterline(_:)` を使う。
 public struct LiquidView<Content: View>: View {
     private let fixedTilt: Angle?
     private let contentMode: LiquidContentMode
@@ -113,12 +114,20 @@ public struct LiquidView<Content: View>: View {
 
 #Preview("Tilt slider") {
     @Previewable @State var degrees: Double = 30
-    @Previewable @State var mode: LiquidContentMode = .fill
+    @Previewable @State var fraction: Double = 0.4
+    @Previewable @State var modeIndex = 0
+
+    let mode: LiquidContentMode = switch modeIndex {
+    case 1: .fit
+    case 2: .waterline(fraction)
+    default: .fill
+    }
 
     VStack(spacing: 24) {
-        Picker("Mode", selection: $mode) {
-            Text("fill").tag(LiquidContentMode.fill)
-            Text("fit").tag(LiquidContentMode.fit)
+        Picker("Mode", selection: $modeIndex) {
+            Text("fill").tag(0)
+            Text("fit").tag(1)
+            Text("waterline").tag(2)
         }
         .pickerStyle(.segmented)
 
@@ -138,9 +147,13 @@ public struct LiquidView<Content: View>: View {
         .frame(width: 240, height: 320)
         .border(.secondary)
 
-        Slider(value: $degrees, in: -180...180)
-        Text("\(Int(degrees))°")
-            .monospacedDigit()
+        LabeledContent("Tilt \(Int(degrees))°") {
+            Slider(value: $degrees, in: -180...180)
+        }
+        LabeledContent("Level \(Int(fraction * 100))%") {
+            Slider(value: $fraction, in: 0...1)
+        }
+        .disabled(modeIndex != 2)
     }
     .padding()
 }

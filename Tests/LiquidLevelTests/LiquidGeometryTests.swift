@@ -116,6 +116,86 @@ struct LiquidGeometryTests {
         #expect(fit.size == LiquidGeometry.fittedSize(containerSize: container, tilt: 0.7))
     }
 
+    @Test("waterline: 割合 0 と 1 で最下点と最上点になる")
+    func waterlineExtremes() {
+        let container = CGSize(width: 100, height: 200)
+        let tilt = 0.6
+        let total = LiquidGeometry.levelBoundingBox(containerSize: container, tilt: tilt).height
+        #expect(abs(LiquidGeometry.waterlineHeight(containerSize: container, tilt: tilt, fraction: 0)) < tolerance)
+        #expect(abs(LiquidGeometry.waterlineHeight(containerSize: container, tilt: tilt, fraction: 1) - total) < 1e-9)
+        // 範囲外はクランプされる
+        #expect(abs(LiquidGeometry.waterlineHeight(containerSize: container, tilt: tilt, fraction: 1.5) - total) < 1e-9)
+    }
+
+    @Test("waterline: 傾き 0 では水位が高さに比例する")
+    func waterlineAtZeroTilt() {
+        let height = LiquidGeometry.waterlineHeight(containerSize: CGSize(width: 100, height: 200), tilt: 0, fraction: 0.3)
+        #expect(abs(height - 60) < tolerance)
+    }
+
+    @Test("waterline: 傾き 90° では回転後の高さ(元の幅)に比例する")
+    func waterlineAtQuarterTurn() {
+        let height = LiquidGeometry.waterlineHeight(containerSize: CGSize(width: 100, height: 200), tilt: .pi / 2, fraction: 0.3)
+        #expect(abs(height - 30) < 1e-9)
+    }
+
+    @Test("waterline: 45° の正方形(菱形)は下半分が三角形になる")
+    func waterlineSquareAtDiagonal() {
+        let container = CGSize(width: 100, height: 100)
+        let tilt = Double.pi / 4
+        let total = 100 * sqrt(2.0)
+        // 半分でちょうど菱形の中心
+        #expect(abs(LiquidGeometry.waterlineHeight(containerSize: container, tilt: tilt, fraction: 0.5) - total / 2) < 1e-9)
+        // 1/4 のとき: 三角形の面積 y²/(2sc) = 2500, sc = 0.5 → y = 50
+        #expect(abs(LiquidGeometry.waterlineHeight(containerSize: container, tilt: tilt, fraction: 0.25) - 50) < 1e-9)
+    }
+
+    @Test("waterline: 区分の境界で連続する")
+    func waterlineIsContinuousAtBoundaries() {
+        let container = CGSize(width: 100, height: 200)
+        let tilt = Double.pi / 6 // s = 0.5, c = √3/2
+        let s = sin(tilt), c = cos(tilt)
+        let m = min(container.width * s, container.height * c) // = 50
+        let total = container.width * s + container.height * c
+        let triangleArea = m * m / (2 * s * c)
+        let totalArea = container.width * container.height
+
+        let lower = LiquidGeometry.waterlineHeight(containerSize: container, tilt: tilt, fraction: triangleArea / totalArea)
+        let upper = LiquidGeometry.waterlineHeight(containerSize: container, tilt: tilt, fraction: 1 - triangleArea / totalArea)
+        #expect(abs(lower - m) < 1e-9)
+        #expect(abs(upper - (total - m)) < 1e-9)
+    }
+
+    @Test("waterline: 割合に対して単調増加", arguments: [0.0, 0.3, 0.5, 1.0, 1.2, 2.0, 3.0])
+    func waterlineIsMonotonic(tilt: Double) {
+        let container = CGSize(width: 90, height: 160)
+        var previous = -1.0
+        for step in 0...20 {
+            let height = LiquidGeometry.waterlineHeight(containerSize: container, tilt: tilt, fraction: Double(step) / 20)
+            #expect(height > previous, "tilt=\(tilt) step=\(step)")
+            previous = height
+        }
+    }
+
+    @Test("layout: waterline は下辺が最下点に一致するようオフセットされる")
+    func layoutWaterlineOffset() {
+        let container = CGSize(width: 100, height: 200)
+
+        // 傾き 0: 液体の高さ 60、中心は容器中心から下へ (200 - 60) / 2 = 70
+        let upright = LiquidGeometry.layout(containerSize: container, tilt: 0, mode: .waterline(0.3))
+        #expect(abs(upright.size.width - 100) < tolerance)
+        #expect(abs(upright.size.height - 60) < tolerance)
+        #expect(abs(upright.offset.width) < tolerance)
+        #expect(abs(upright.offset.height - 70) < tolerance)
+
+        // 時計回りに 90°: 画面の右が下。液体の高さ 30、中心は右へ (100 - 30) / 2 = 35
+        let quarter = LiquidGeometry.layout(containerSize: container, tilt: .pi / 2, mode: .waterline(0.3))
+        #expect(abs(quarter.size.width - 200) < 1e-9)
+        #expect(abs(quarter.size.height - 30) < 1e-9)
+        #expect(abs(quarter.offset.width - 35) < 1e-9)
+        #expect(abs(quarter.offset.height) < 1e-9)
+    }
+
     @Test("インターフェース向きごとに重力を変換すると直立状態になる")
     func gravityInInterfaceUpright() {
         // 各向きで端末を実際にその向きに持ったときのデバイス座標系の重力

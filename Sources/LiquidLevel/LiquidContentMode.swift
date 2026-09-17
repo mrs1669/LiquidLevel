@@ -12,6 +12,12 @@ public enum LiquidContentMode: Sendable, Hashable {
     ///
     /// コンテンツ全体が常に見える。
     case fit
+
+    /// 容器の面積に対する割合 (0...1) の液体が、水平な液面で容器の底に溜まる。
+    ///
+    /// コンテンツには「液面より下の領域」を覆う水平矩形(幅は水平外接矩形と同じ、高さは水位)が与えられ、
+    /// 下辺が菱形の最下点に一致するよう配置される。`alignment: .top` にすると液面に沿う。
+    case waterline(Double)
 }
 
 /// `LiquidGeometry.layout(containerSize:tilt:mode:)` の結果。
