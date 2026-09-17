@@ -65,6 +65,57 @@ struct LiquidGeometryTests {
         #expect(abs(box.height - diagonal) < 1e-9)
     }
 
+    @Test("fit: 傾き 0 なら容器と同じサイズ")
+    func fittedSizeAtZero() {
+        let size = LiquidGeometry.fittedSize(containerSize: CGSize(width: 100, height: 200), tilt: 0)
+        #expect(abs(size.width - 100) < tolerance)
+        #expect(abs(size.height - 200) < tolerance)
+    }
+
+    @Test("fit: 傾き 90° では回転後の短辺に高さが揃う")
+    func fittedSizeAtQuarterTurn() {
+        // 100×200 を 90° 回すと 200×100 の枡になる。1:2 の矩形を収めると高さ 100 が上限
+        let size = LiquidGeometry.fittedSize(containerSize: CGSize(width: 100, height: 200), tilt: .pi / 2)
+        #expect(abs(size.width - 50) < tolerance)
+        #expect(abs(size.height - 100) < tolerance)
+    }
+
+    @Test("fit: 正方形を 45° 傾けると 1/√2 の正方形が内接する")
+    func fittedSizeSquareAtDiagonal() {
+        let size = LiquidGeometry.fittedSize(containerSize: CGSize(width: 100, height: 100), tilt: .pi / 4)
+        let expected = 100 / sqrt(2.0)
+        #expect(abs(size.width - expected) < 1e-9)
+        #expect(abs(size.height - expected) < 1e-9)
+    }
+
+    @Test("fit: 内接矩形の四隅が回転後の容器に収まる", arguments: [0.1, 0.4, 1.0, 2.0, 2.9])
+    func fittedSizeStaysInside(tilt: Double) {
+        let container = CGSize(width: 120, height: 300)
+        let size = LiquidGeometry.fittedSize(containerSize: container, tilt: tilt)
+        // 四隅を容器のローカル座標(+tilt 回転)に戻し、容器の半サイズ以内か確認
+        for sx in [-1.0, 1.0] {
+            for sy in [-1.0, 1.0] {
+                let x = sx * size.width / 2
+                let y = sy * size.height / 2
+                let localX = x * cos(tilt) + y * sin(tilt)
+                let localY = -x * sin(tilt) + y * cos(tilt)
+                #expect(abs(localX) <= container.width / 2 + 1e-9)
+                #expect(abs(localY) <= container.height / 2 + 1e-9)
+            }
+        }
+    }
+
+    @Test("layout: fill と fit はオフセットなし")
+    func layoutFillAndFitHaveNoOffset() {
+        let container = CGSize(width: 100, height: 200)
+        let fill = LiquidGeometry.layout(containerSize: container, tilt: 0.7, mode: .fill)
+        let fit = LiquidGeometry.layout(containerSize: container, tilt: 0.7, mode: .fit)
+        #expect(fill.offset == .zero)
+        #expect(fit.offset == .zero)
+        #expect(fill.size == LiquidGeometry.levelBoundingBox(containerSize: container, tilt: 0.7))
+        #expect(fit.size == LiquidGeometry.fittedSize(containerSize: container, tilt: 0.7))
+    }
+
     @Test("インターフェース向きごとに重力を変換すると直立状態になる")
     func gravityInInterfaceUpright() {
         // 各向きで端末を実際にその向きに持ったときのデバイス座標系の重力

@@ -16,11 +16,12 @@ public extension Animation {
 /// }
 /// ```
 ///
-/// コンテンツには「傾いた容器の水平外接矩形」のサイズが与えられる。
+/// 既定の `.fill` モードではコンテンツに「傾いた容器の水平外接矩形」のサイズが与えられる。
 /// そのため `alignment: .bottom` などで下寄せすると、端末を斜めにしたときに
-/// 菱形の最下点にコンテンツが沈む。
+/// 菱形の最下点にコンテンツが沈む。コンテンツ全体を欠けずに見せたい場合は `.fit` を使う。
 public struct LiquidView<Content: View>: View {
     private let fixedTilt: Angle?
+    private let contentMode: LiquidContentMode
     private let animation: Animation?
     private let content: Content
 
@@ -29,15 +30,18 @@ public struct LiquidView<Content: View>: View {
     /// 端末のセンサーに追従する `LiquidView` を作る。
     ///
     /// - Parameters:
+    ///   - contentMode: コンテンツを容器に収める方法。
     ///   - animation: 傾き変化に適用するアニメーション。`nil` でセンサー値に即時追従する。
     ///   - smoothing: センサー値に掛けるローパスフィルタの強さ (0...0.99)。
     ///   - content: 液体として表示するコンテンツ。
     public init(
+        contentMode: LiquidContentMode = .fill,
         animation: Animation? = .liquid,
         smoothing: Double = 0,
         @ViewBuilder content: () -> Content
     ) {
         self.fixedTilt = nil
+        self.contentMode = contentMode
         self.animation = animation
         self.content = content()
         self._motion = State(initialValue: LiquidMotion(smoothing: smoothing))
@@ -47,14 +51,17 @@ public struct LiquidView<Content: View>: View {
     ///
     /// - Parameters:
     ///   - tilt: 端末の傾き(画面を正面から見て時計回り正)。
+    ///   - contentMode: コンテンツを容器に収める方法。
     ///   - animation: 傾き変化に適用するアニメーション。
     ///   - content: 液体として表示するコンテンツ。
     public init(
         tilt: Angle,
+        contentMode: LiquidContentMode = .fill,
         animation: Animation? = .liquid,
         @ViewBuilder content: () -> Content
     ) {
         self.fixedTilt = tilt
+        self.contentMode = contentMode
         self.animation = animation
         self.content = content()
         self._motion = State(initialValue: LiquidMotion())
@@ -64,15 +71,28 @@ public struct LiquidView<Content: View>: View {
         fixedTilt ?? motion.tilt
     }
 
+    /// アニメーションの対象となる値。傾きとモードのどちらが変わっても補間する。
+    private struct AnimationKey: Equatable {
+        var tilt: Angle
+        var mode: LiquidContentMode
+    }
+
     public var body: some View {
         GeometryReader { proxy in
             let tilt = tilt
-            let box = LiquidGeometry.levelBoundingBox(containerSize: proxy.size, tilt: tilt.radians)
+            let layout = LiquidGeometry.layout(
+                containerSize: proxy.size,
+                tilt: tilt.radians,
+                mode: contentMode
+            )
             content
-                .frame(width: box.width, height: box.height)
+                .frame(width: layout.size.width, height: layout.size.height)
                 .rotationEffect(-tilt)
-                .position(x: proxy.size.width / 2, y: proxy.size.height / 2)
-                .animation(animation, value: tilt)
+                .position(
+                    x: proxy.size.width / 2 + layout.offset.width,
+                    y: proxy.size.height / 2 + layout.offset.height
+                )
+                .animation(animation, value: AnimationKey(tilt: tilt, mode: contentMode))
         }
         .clipped()
         .background {
@@ -93,9 +113,16 @@ public struct LiquidView<Content: View>: View {
 
 #Preview("Tilt slider") {
     @Previewable @State var degrees: Double = 30
+    @Previewable @State var mode: LiquidContentMode = .fill
 
     VStack(spacing: 24) {
-        LiquidView(tilt: .degrees(degrees)) {
+        Picker("Mode", selection: $mode) {
+            Text("fill").tag(LiquidContentMode.fill)
+            Text("fit").tag(LiquidContentMode.fit)
+        }
+        .pickerStyle(.segmented)
+
+        LiquidView(tilt: .degrees(degrees), contentMode: mode) {
             ZStack(alignment: .bottom) {
                 LinearGradient(
                     colors: [.cyan.opacity(0.3), .blue],

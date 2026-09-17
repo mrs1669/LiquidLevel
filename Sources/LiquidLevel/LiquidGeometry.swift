@@ -43,6 +43,31 @@ public enum LiquidGeometry {
         )
     }
 
+    /// 容器と同じアスペクト比を保ったまま、`tilt` だけ回転させた容器に内接する最大の水平矩形のサイズ。
+    ///
+    /// 水平矩形 `a × (a·h/w)` の四隅が回転後の容器に収まる条件
+    /// `a(|cos| + r|sin|) ≤ w`, `a(|sin| + r|cos|) ≤ h` (r = h/w) から `a` の上限を求める。
+    public static func fittedSize(containerSize: CGSize, tilt: Double) -> CGSize {
+        let w = containerSize.width
+        let h = containerSize.height
+        guard w > 0, h > 0 else { return .zero }
+        let s = abs(sin(tilt))
+        let c = abs(cos(tilt))
+        let r = h / w
+        let a = min(w / (c + r * s), h / (s + r * c))
+        return CGSize(width: a, height: a * r)
+    }
+
+    /// `mode` に応じたコンテンツのサイズと配置を求める。
+    public static func layout(containerSize: CGSize, tilt: Double, mode: LiquidContentMode) -> LiquidLayout {
+        switch mode {
+        case .fill:
+            LiquidLayout(size: levelBoundingBox(containerSize: containerSize, tilt: tilt))
+        case .fit:
+            LiquidLayout(size: fittedSize(containerSize: containerSize, tilt: tilt))
+        }
+    }
+
     /// デバイス座標系の重力ベクトルを、現在のインターフェース向きの画面座標系に変換する。
     public static func gravityInInterface(
         x: Double,
