@@ -97,6 +97,7 @@
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					9216AE706E9B0D2C681B5591 = {
+						DevelopmentTeam = XU74X3434S;
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -198,6 +199,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = XU74X3434S;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = LiquidLevel;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -221,6 +223,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = XU74X3434S;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = LiquidLevel;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
