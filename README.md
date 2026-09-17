@@ -121,6 +121,16 @@ var body: some View {
 xcodebuild test -scheme LiquidLevel -destination 'platform=iOS Simulator,name=iPhone 17'
 ```
 
+## デモアプリ
+
+`Example/LiquidLevelExample.xcodeproj` を開いて実機で実行すると、傾き・インターフェース向きの読み出し、
+モード切り替え、手動 tilt の Slider で挙動を確認できます(シミュレータでは CoreMotion が動かないため手動 tilt で確認してください)。
+プロジェクトは [XcodeGen](https://github.com/yonaskolb/XcodeGen) で生成しています。構成を変えた場合は再生成してください。
+
+```bash
+cd Example && xcodegen generate
+```
+
 ## 補足
 
 - CoreMotion の加速度・ジャイロは Info.plist の使用許可キー(`NSMotionUsageDescription`)を必要としません
