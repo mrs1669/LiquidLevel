@@ -1,0 +1,30 @@
+name: LiquidLevelExample
+options:
+  bundleIdPrefix: com.mrs1669
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+packages:
+  LiquidLevel:
+    path: ..
+targets:
+  LiquidLevelExample:
+    type: application
+    platform: iOS
+    sources:
+      - LiquidLevelExample
+    dependencies:
+      - package: LiquidLevel
+    settings:
+      base:
+        SWIFT_VERSION: "6.0"
+        SWIFT_STRICT_CONCURRENCY: complete
+        TARGETED_DEVICE_FAMILY: "1"
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: XU74X3434S
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        # 画面回転を許可した状態で向きの扱いを確認するため全方向を許可する
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+        INFOPLIST_KEY_CFBundleDisplayName: LiquidLevel

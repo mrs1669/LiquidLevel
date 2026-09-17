@@ -82,17 +82,22 @@ LiquidView(tilt: .degrees(30)) {
 }
 ```
 
-### センサーを直接扱う
+### センサーを直接扱う・共有する
 
 `LiquidMotion` は `@Observable` なモデルとして単体でも使えます。
+`LiquidView(motion:)` に渡せば、複数の View でセンサーを共有したり、傾きの値を別の UI に表示できます
+(この場合 `start()` / `stop()` は呼び出し側で行います)。
 
 ```swift
 @State private var motion = LiquidMotion()
 
 var body: some View {
-    Text("\(motion.tilt.degrees)°")
-        .onAppear { motion.start() }
-        .onDisappear { motion.stop() }
+    VStack {
+        LiquidView(motion: motion) { Color.blue }
+        Text("\(motion.tilt.degrees)°")
+    }
+    .onAppear { motion.start() }
+    .onDisappear { motion.stop() }
 }
 ```
 
@@ -114,6 +119,16 @@ var body: some View {
 
 ```bash
 xcodebuild test -scheme LiquidLevel -destination 'platform=iOS Simulator,name=iPhone 17'
+```
+
+## デモアプリ
+
+`Example/LiquidLevelExample.xcodeproj` を開いて実機で実行すると、傾き・インターフェース向きの読み出し、
+モード切り替え、手動 tilt の Slider で挙動を確認できます(シミュレータでは CoreMotion が動かないため手動 tilt で確認してください)。
+プロジェクトは [XcodeGen](https://github.com/yonaskolb/XcodeGen) で生成しています。構成を変えた場合は再生成してください。
+
+```bash
+cd Example && xcodegen generate
 ```
 
 ## 補足
