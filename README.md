@@ -82,17 +82,22 @@ LiquidView(tilt: .degrees(30)) {
 }
 ```
 
-### センサーを直接扱う
+### センサーを直接扱う・共有する
 
 `LiquidMotion` は `@Observable` なモデルとして単体でも使えます。
+`LiquidView(motion:)` に渡せば、複数の View でセンサーを共有したり、傾きの値を別の UI に表示できます
+(この場合 `start()` / `stop()` は呼び出し側で行います)。
 
 ```swift
 @State private var motion = LiquidMotion()
 
 var body: some View {
-    Text("\(motion.tilt.degrees)°")
-        .onAppear { motion.start() }
-        .onDisappear { motion.stop() }
+    VStack {
+        LiquidView(motion: motion) { Color.blue }
+        Text("\(motion.tilt.degrees)°")
+    }
+    .onAppear { motion.start() }
+    .onDisappear { motion.stop() }
 }
 ```
 

@@ -22,11 +22,12 @@ public extension Animation {
 /// 一定量の液体が水平な液面で溜まる表現には `.waterline(_:)` を使う。
 public struct LiquidView<Content: View>: View {
     private let fixedTilt: Angle?
+    private let externalMotion: LiquidMotion?
     private let contentMode: LiquidContentMode
     private let animation: Animation?
     private let content: Content
 
-    @State private var motion: LiquidMotion
+    @State private var ownedMotion: LiquidMotion
 
     /// 端末のセンサーに追従する `LiquidView` を作る。
     ///
@@ -42,10 +43,35 @@ public struct LiquidView<Content: View>: View {
         @ViewBuilder content: () -> Content
     ) {
         self.fixedTilt = nil
+        self.externalMotion = nil
         self.contentMode = contentMode
         self.animation = animation
         self.content = content()
-        self._motion = State(initialValue: LiquidMotion(smoothing: smoothing))
+        self._ownedMotion = State(initialValue: LiquidMotion(smoothing: smoothing))
+    }
+
+    /// 外部で管理する `LiquidMotion` を共有する `LiquidView` を作る。
+    ///
+    /// 複数の View でセンサーを共有したい場合や、傾きの値を別の UI にも表示したい場合に使う。
+    /// `start()` / `stop()` は呼び出し側の責務。インターフェース向きは `LiquidView` が更新する。
+    ///
+    /// - Parameters:
+    ///   - motion: 共有する傾きモデル。
+    ///   - contentMode: コンテンツを容器に収める方法。
+    ///   - animation: 傾き変化に適用するアニメーション。
+    ///   - content: 液体として表示するコンテンツ。
+    public init(
+        motion: LiquidMotion,
+        contentMode: LiquidContentMode = .fill,
+        animation: Animation? = .liquid,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.fixedTilt = nil
+        self.externalMotion = motion
+        self.contentMode = contentMode
+        self.animation = animation
+        self.content = content()
+        self._ownedMotion = State(initialValue: LiquidMotion())
     }
 
     /// 傾きを固定値で与える `LiquidView` を作る。プレビューやセンサーのない環境向け。
@@ -62,14 +88,24 @@ public struct LiquidView<Content: View>: View {
         @ViewBuilder content: () -> Content
     ) {
         self.fixedTilt = tilt
+        self.externalMotion = nil
         self.contentMode = contentMode
         self.animation = animation
         self.content = content()
-        self._motion = State(initialValue: LiquidMotion())
+        self._ownedMotion = State(initialValue: LiquidMotion())
+    }
+
+    private var motion: LiquidMotion {
+        externalMotion ?? ownedMotion
     }
 
     private var tilt: Angle {
         fixedTilt ?? motion.tilt
+    }
+
+    /// センサーの開始・停止をこの View が担うかどうか。
+    private var ownsMotionLifecycle: Bool {
+        fixedTilt == nil && externalMotion == nil
     }
 
     /// アニメーションの対象となる値。傾きとモードのどちらが変わっても補間する。
@@ -102,10 +138,10 @@ public struct LiquidView<Content: View>: View {
             }
         }
         .onAppear {
-            if fixedTilt == nil { motion.start() }
+            if ownsMotionLifecycle { motion.start() }
         }
         .onDisappear {
-            motion.stop()
+            if ownsMotionLifecycle { motion.stop() }
         }
     }
 }
